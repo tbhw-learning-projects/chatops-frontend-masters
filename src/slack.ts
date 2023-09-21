@@ -2,6 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { isSlackEvent, slackApi, modal, blocks } from './util/slack';
 import { parse } from 'querystring';
 import { CallbackId, Channels } from './constants';
+import { saveItem } from './util/notion';
 
 export const handler: Handler = async (event) => {
 	if (!isSlackEvent(event)) {
@@ -15,7 +16,6 @@ export const handler: Handler = async (event) => {
 	}
 	
 	if (body.payload) {
-		console.log(JSON.stringify(JSON.parse(body.payload), null, 2));
 		return handleInteractivity(JSON.parse(body.payload));
 	}
 
@@ -61,11 +61,12 @@ async function handleInteractivity(payload: SlackModalPayload) {
 			const data = payload.view.state.values;
 			const fields = {
 				opinion: data.opinion_block.opinion.value,
-				spiceLevel: data.spice_level_block.spice_level.selected_option,
+				spiceLevel: data.spice_level_block.spice_level.selected_option.value,
 				submitter: payload.user.name
 			};
 
-			await slackApi("chat.postMessage", { channel: Channels.BotTesting, text: `Oh, snap!${":hot_pepper:".repeat(parseInt(fields.spiceLevel.value, 10))}\n\n <@${fields.submitter}> just started a food fight! :eyes:\n\nTake:\n>*${fields.opinion}*` });
+			await slackApi("chat.postMessage", { channel: Channels.BotTesting, text: `Oh, snap!${":hot_pepper:".repeat(parseInt(fields.spiceLevel, 10))}\n\n <@${fields.submitter}> just started a food fight! :eyes:\n\nTake:\n>*${fields.opinion}*` });
+			await saveItem(fields);
 			break;
 		}
 		case CallbackId.FoodFightNudge: {
